@@ -5,14 +5,15 @@ import time
 
 
 # TODO: 添加日志记录
-# TODO: 强制退出时杀死subprocess.Popen开启的子进程
+# TODO: 强制退出时杀死subprocess.Popen开启的子进程 (Done)
 # TODO: 添加音频播放错误处理
-# BUG: 连续（连续代码）下一首时，由于没执行到_play_audio，下一首操作会失效
+# BUG: 连续（连续代码）下一首时，由于没执行到_play_audio，下一首操作会失效 (解决：sleep(0.01))
 class AudioPlayer:
     def __init__(self):
         self.play_queue = queue.Queue()
         self.lock = threading.Lock()
         self.current_process = None
+        self.current_playing = None
         self.interrupt_audio = None
         self.is_running = True
         # 守护进程不会阻塞主程序退出，当所有非守护线程结束后，守护线程会自动终止
@@ -31,39 +32,69 @@ class AudioPlayer:
                     audio_path = self.play_queue.get(timeout=0.3)
                 except queue.Empty:
                     continue
-            print(
-                f"""start print:
-                queue_size: {self.play_queue.qsize()}
-                audio_path: {audio_path}
-                interrupt_audio: {self.interrupt_audio}
-                """
-            )
+
+            self._print_data(audio_path=audio_path)
 
             with self.lock:
                 if self.interrupt_audio:
                     continue
                 self._terminate_current_process()
+                self.current_playing = audio_path
                 self.current_process = self._play_audio(audio_path)
 
             self.current_process.wait()
 
             with self.lock:
                 self.current_process = None
+                self.current_playing = None
 
     def enqueue(self, file_path):
+        time.sleep(0.01)
         with self.lock:
             self.play_queue.put(file_path)
+        print(f"Added {file_path} to queue.")
 
     def interrupt(self, file_path):
+        time.sleep(0.01)
         with self.lock:
             self._terminate_current_process()
             self.interrupt_audio = file_path
 
     def next_audio(self):
+        time.sleep(0.01)
+        if self.play_queue.empty():
+            print("Queue is empty.")
+            return
         with self.lock:
             self._terminate_current_process()
 
-            
+    def clear_queue(self):
+        time.sleep(0.01)
+        with self.lock:
+            while not self.play_queue.empty():
+                self.play_queue.get_nowait()
+            print("Queue cleared.")
+
+    def stop_and_clear_queue(self):
+        time.sleep(0.01)
+        with self.lock:
+            while not self.play_queue.empty():
+                self.play_queue.get_nowait()
+            self._terminate_current_process()
+
+    def pause(self):
+        time.sleep(0.01)
+        with self.lock:
+            self.current_process.send_signal(subprocess.signal.SIGSTOP)
+
+    def resume(self):
+        time.sleep(0.01)
+        with self.lock:
+            self.current_process.send_signal(subprocess.signal.SIGCONT)
+
+    def get_play_list(self):
+        time.sleep(0.01)
+        return {'current_playing': self.current_playing, 'queue': list(self.play_queue.queue)}
 
     def _play_audio(self, file_path):
         return subprocess.Popen(
@@ -72,17 +103,23 @@ class AudioPlayer:
             stderr=subprocess.DEVNULL
             )
     
-    def _clear_queue(self):
-        with self.lock:
-            self.queue.clear()
-    
     def _terminate_current_process(self):
         if self.current_process:
             try:
                 self.current_process.terminate()
                 self.current_process.wait(timeout=0.5)
             except subprocess.TimeoutExpired:
-                print("进程未响应，正在强制 kill")
+                print("Warning: process not responding, forcing kill")
                 self.current_process.kill()
             self.current_process = None
 
+    def _print_data(self, audio_path = None):
+        print(
+                f"""start print:
+                queue: {list(self.play_queue.queue)}
+                queue_size: {self.play_queue.qsize()}
+                {f"audio_path: {audio_path}" if audio_path else ""}
+                interrupt_audio: {self.interrupt_audio}
+                current_playing: {self.current_playing}
+                """
+                )
