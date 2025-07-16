@@ -22,34 +22,49 @@ audio_player = AudioPlayer()
 #存储 WebSocket 连接
 websocket_clients = set()
 
-@app.websocket("/ws")
+
+@app.websocket("/tts_audio_control")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     websocket_clients.add(websocket)
+
+    audio_player.websocket = websocket
+    audio_player.loop = asyncio.get_event_loop()
+
     try:
         while True:
             try:
                 data = await websocket.receive_json()
-                command = data.get("command")
-                file_path = data.get("file_path")
+                command = data.get("control_type")
+                file_path = data.get("tts_file", "").strip()
 
                 if command == "play":
-                    success = audio_player.enqueue(file_path)
+                    success = audio_player.play(file_path)
                     if success:
                         await websocket.send_json({"status": "success"})
                     else:
-                        await websocket.send_json({"status": "error", "message": "Failed to play audio"})
-                    
+                        await websocket.send_json({
+                            "status":
+                            "error",
+                            "message":
+                            "Failed to play audio"
+                        })
+
                 elif command == "stop":
-                    audio_player.stop(file_path)
+                    audio_player.stop()
                     await websocket.send_json({"status": "success"})
-                
-                elif command == "audio_progress":
-                    audio_player.audio_progress()
-                    await websocket.send_json(audio_player.audio_progress())
-                
-                else :
-                    await websocket.send_json({"error": f"Invalid command：{command}"})
+
+                elif command == "pause":
+                    audio_player.pause()
+                    await websocket.send_json({"status": "success"})
+
+                elif command == "resume":
+                    audio_player.unpause()
+                    await websocket.send_json({"status": "success"})
+
+                else:
+                    await websocket.send_json(
+                        {"error": f"Invalid command：{command}"})
             except Exception as e:
                 await websocket.send_json({"error": str(e)})
     except WebSocketDisconnect:
@@ -57,7 +72,6 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         websocket_clients.remove(websocket)
 
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-            
