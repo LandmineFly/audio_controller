@@ -7,6 +7,8 @@ import time
 # TODO: 强制退出时杀死subprocess.Popen开启的子进程 (Done)
 # TODO: 添加音频播放错误处理
 # BUG: 连续（连续代码）下一首时，由于没执行到_play_audio，下一首操作会失效 (解决：sleep(0.01))
+
+# TODO: 改成 pygame 实现
 class AudioPlayer:
     def __init__(self):
         self.play_queue = queue.Queue()
