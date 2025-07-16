@@ -24,10 +24,16 @@ class AudioPlayer:
         self.is_thread_running: bool = False
 
     def play(self, file_path):
+        # 恢复播放
         if self.current_audio:
             if (not self.is_playing or self.is_paused):
+                # 初始化声卡
+                pygame.mixer.init()
+                pygame.mixer.music.load(self.current_audio)
+
                 pygame.mixer.music.play(start=self.elapsed_time)
                 pygame.mixer.music.unpause()
+        # 开始播放
         elif self._load_audio(file_path):
             if (not self.is_playing or self.is_paused):
                 pygame.mixer.music.play()
@@ -42,6 +48,8 @@ class AudioPlayer:
 
     def stop(self):
         pygame.mixer.music.stop()
+        # 释放声卡
+        pygame.mixer.quit()
         self.is_playing = False
         self.is_paused = False
         self.elapsed_time = 0
@@ -53,6 +61,8 @@ class AudioPlayer:
         """暂停播放"""
         if self.is_playing and not self.is_paused:
             pygame.mixer.music.pause()
+            # 释放声卡
+            pygame.mixer.quit()
             self.is_paused = True
             # self.on_pause and self.on_pause()
             return True
@@ -60,13 +70,8 @@ class AudioPlayer:
 
     def unpause(self):
         """继续播放"""
-        if self.is_playing and self.is_paused:
-            pygame.mixer.music.unpause()
-            self.is_paused = False
-            self.start_time = time.time() - self.elapsed_time  # 更新开始时间
-            self._start_update_thread()
-            # self.on_unpause and self.on_unpause()
-            return True
+        if self.current_audio:
+            return self.play(self.current_audio)
         return False
 
     def _load_audio(self, file_path):
@@ -74,9 +79,10 @@ class AudioPlayer:
             print(f"歌曲文件不存在: {file_path}")
             return False
 
-        self.current_audio = file_path
+        # 初始化声卡
         pygame.mixer.init()
         pygame.mixer.music.load(file_path)
+        self.current_audio = file_path
         self.is_playing = False
         self.is_paused = False
         self.elapsed_time = 0

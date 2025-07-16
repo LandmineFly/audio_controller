@@ -51,17 +51,40 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
 
                 elif command == "stop":
-                    audio_player.stop()
-                    await websocket.send_json({"status": "success"})
+                    success = audio_player.stop()
+                    if success:
+                        await websocket.send_json({"status": "success"})
+                    else:
+                        await websocket.send_json({
+                            "status":
+                            "error",
+                            "message":
+                            "Failed to stop audio"
+                        })
 
                 elif command == "pause":
-                    audio_player.pause()
-                    await websocket.send_json({"status": "success"})
+                    success = audio_player.pause()
+                    if success:
+                        await websocket.send_json({"status": "success"})
+                    else:
+                        await websocket.send_json({
+                            "status":
+                            "error",
+                            "message":
+                            "Failed to pause audio"
+                        })
 
                 elif command == "resume":
-                    audio_player.unpause()
-                    await websocket.send_json({"status": "success"})
-
+                    success = audio_player.unpause()
+                    if success:
+                        await websocket.send_json({"status": "success"})
+                    else:
+                        await websocket.send_json({
+                            "status":
+                            "error",
+                            "message":
+                            "Failed to resume audio"
+                        })
                 else:
                     await websocket.send_json(
                         {"error": f"Invalid command：{command}"})
