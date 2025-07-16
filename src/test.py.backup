@@ -1,0 +1,57 @@
+from controller import AudioPlayer
+import time
+import sys
+import signal
+
+if __name__ == "__main__":
+    
+    ap = AudioPlayer()
+
+    """
+    注册 SIGINT 和 SIGTERM 处理器
+    否则强制退出时表现为自动取出队列里的下一个音频并使用fplay播放，并在py进程终止后继续播放
+    """
+    def handle_exit(signum, frame):
+        # time.sleep(5) # 可以用sleep来验证上面所说的问题
+        print(f"Received signal {signum}, cleaning up...")
+        if ap.current_process:
+            ap.current_process.terminate()
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
+    
+    # 下面为测试操作
+    ap.enqueue("../audio/ykn.mp3")
+    ap.enqueue("../audio/ykn.mp3")
+    ap.enqueue("../audio/ykn.mp3")
+    ap.enqueue("../audio/ykn.mp3")
+    ap.enqueue("../audio/ykn.mp3")
+    ap.enqueue("../audio/ykn.mp3")
+    ap.enqueue("../audio/ykn.mp3")
+
+    # time.sleep(1)
+    # ap.pause()
+    # time.sleep(3)
+    # ap.resume()
+
+    # time.sleep(1)
+    # ap.interrupt("../audio/ykn.mp3")
+    # # time.sleep(1)
+    # ap.interrupt("../audio/POPY.mp3")
+    # print(ap.get_play_list())
+
+    # time.sleep(10)
+    # ap.stop_and_clear_queue()
+
+    # time.sleep(1)
+    # ap.next_audio()
+    # ap.next_audio()
+    # ap.next_audio()
+    # ap.clear_queue()
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Exiting...")
