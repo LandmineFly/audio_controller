@@ -34,15 +34,26 @@ async def websocket_endpoint(websocket: WebSocket):
                 file_path = data.get("file_path")
 
                 if command == "play":
-                    audio_player.enqueue(file_path)
+                    success = audio_player.enqueue(file_path)
+                    if success:
+                        await websocket.send_json({"status": "success"})
+                    else:
+                        await websocket.send_json({"status": "error", "message": "Failed to play audio"})
+                    
                 elif command == "stop":
                     audio_player.stop(file_path)
+                    await websocket.send_json({"status": "success"})
+                
                 elif command == "audio_progress":
                     audio_player.audio_progress()
-                else
+                    await websocket.send_json(audio_player.audio_progress())
+                
+                else :
                     await websocket.send_json({"error": f"Invalid command：{command}"})
             except Exception as e:
                 await websocket.send_json({"error": str(e)})
+    except WebSocketDisconnect:
+        print("Client disconnected")
     finally:
         websocket_clients.remove(websocket)
 
