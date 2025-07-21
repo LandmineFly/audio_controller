@@ -1,6 +1,7 @@
 import threading
 import time
 import os
+import sys
 import pygame
 from mutagen.mp3 import MP3
 from mutagen.wave import WAVE
@@ -18,32 +19,47 @@ class AudioPlayer:
         self.total_time: float = 0
         self.start_time: float = 0
         self.elapsed_time: float = 0
+        # 未播放或停止, playing=False, paused=False;
+        # 正在播放, playing=True, paused=False;
+        # 暂停, playing=True, paused=True;
         self.is_playing: bool = False
         self.is_paused: bool = False
         self.update_thread = None
         self.is_thread_running: bool = False
 
     def play(self, file_path):
-        # 恢复播放
-        if self.current_audio:
-            if (not self.is_playing or self.is_paused):
-                # 初始化声卡
-                pygame.mixer.init()
-                pygame.mixer.music.load(self.current_audio)
+        if not os.path.exists(file_path):
+            print(f"[ERROR] Audio file does not exist: [{file_path}]",
+                  flush=True)
+            return False
 
-                pygame.mixer.music.play(start=self.elapsed_time)
-                pygame.mixer.music.unpause()
-        # 开始播放
-        elif self._load_audio(file_path):
-            if (not self.is_playing or self.is_paused):
+        try:
+            # 恢复播放
+            if self.current_audio and os.path.samefile(self.current_audio,
+                                                       file_path):
+                if (not self.is_playing or self.is_paused):
+                    # 初始化声卡
+                    pygame.mixer.init()
+                    pygame.mixer.music.load(self.current_audio)
+
+                    pygame.mixer.music.play(start=self.elapsed_time)
+                    pygame.mixer.music.unpause()
+                # else:
+                #     print(
+                #         f"[WARN] Try to play the audio file which is already playing: [{self.current_audio}], miss",
+                #         flush=True)
+            # 开始播放
+            elif self._load_audio(file_path):
+                # if (not self.is_playing or self.is_paused):
                 pygame.mixer.music.play()
-        else:
+        except Exception as e:
+            print(f"[ERROR] Failed to play audio: [{file_path}], {e}",
+                  flush=True)
             return False
         self.is_playing = True
         self.is_paused = False
         self.start_time = time.time() - self.elapsed_time
         self._start_update_thread()
-        # self.update_thread.join()
         return True
 
     def stop(self):
@@ -54,31 +70,39 @@ class AudioPlayer:
         self.is_paused = False
         self.elapsed_time = 0
         self.start_time = 0
-        self.current_audio = None
+        # self.current_audio = None
         return True
 
     def pause(self):
         """暂停播放"""
-        if self.is_playing and not self.is_paused:
+        if self.current_audio and (self.is_playing and not self.is_paused):
             pygame.mixer.music.pause()
             # 释放声卡
             pygame.mixer.quit()
             self.is_paused = True
             # self.on_pause and self.on_pause()
             return True
+        # elif not self.current_audio:
+        #     print(f"[WARN] No loaded audio file", flush=True)
+        # else:
+        #     print(
+        #         f"[WRAN] Try to pause the audio file which is not playing or already paused: [{self.current_audio}], miss",
+        #         flush=True)
         return False
 
-    def unpause(self):
+    def resume(self):
         """继续播放"""
-        if self.current_audio:
+        if self.current_audio and (not self.is_playing or self.is_paused):
             return self.play(self.current_audio)
+        # elif not self.current_audio:
+        #     print(f"[WARN] No loaded audio file", flush=True)
+        # else:
+        #     print(
+        #         f"[WRAN] Try to resume the audio file which is already playing: [{self.current_audio}], miss",
+        #         flush=True)
         return False
 
     def _load_audio(self, file_path):
-        if not os.path.exists(file_path):
-            print(f"歌曲文件不存在: {file_path}")
-            return False
-
         # 初始化声卡
         pygame.mixer.init()
         pygame.mixer.music.load(file_path)
@@ -101,9 +125,9 @@ class AudioPlayer:
                 audio = WAVE(self.current_audio)
                 self.total_time = audio.info.length
             else:
-                raise ValueError("不支持的音频文件格式")
+                raise ValueError("Unsupported audio format")
         except Exception as e:
-            print(f"获取音频时长失败: {e}")
+            print(f"[ERROR] Failed to get audio duration: {e}", flush=True)
             self.total_time = 0
 
     def _start_update_thread(self):

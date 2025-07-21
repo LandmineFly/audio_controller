@@ -75,7 +75,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
 
                 elif command == "resume":
-                    success = audio_player.unpause()
+                    success = audio_player.resume()
                     if success:
                         await websocket.send_json({"status": "success"})
                     else:
