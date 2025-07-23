@@ -5,7 +5,8 @@ After=network.target
 [Service]
 Type=simple
 Environment="USER=cat"
-ExecStart=/bin/bash -c "sudo -u ${USER} bash /home/${USER}/xwsoft/audio_controller/script/setup/audio_controller_service.sh"
+User=cat
+ExecStart=/bin/bash -c "bash /home/${USER}/xwsoft/audio_controller/script/setup/audio_controller_service.sh"
 RemainAfterExit=yes
 KillMode=process
 
