@@ -31,6 +31,7 @@ for PID in "${PID_ARRAY[@]}"; do
         continue
     else
         echo "进程 $PID 信息：$PROC_INFO"
+        kill -9 "$PID"
         if [ $? -eq 0 ]; then
             echo "成功停止进程 $PID。"
         else
