@@ -6,6 +6,8 @@ import uvicorn
 import asyncio
 import json
 import re
+import os
+import traceback
 
 app = FastAPI()
 
@@ -36,7 +38,9 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 data = await websocket.receive_json()
                 command = data.get("control_type")
-                file_path = data.get("tts_file", "").strip()
+                file_name = data.get("tts_file").strip()
+                file_path = os.path.join("/home/cat/xwsoft/audio", file_name)
+                print(f"file_path:|{file_path}|")
 
                 if command == "play":
                     success = audio_player.play(file_path)
@@ -92,6 +96,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json({"error": str(e)})
     except WebSocketDisconnect:
         print("Client disconnected")
+    except Exception as e:
+        print(f"\nException occurs:"
+                + f"\ntype:{type(e).__name__}"
+                + f"\nmsg:{str(e)}"
+                + f"\nstack:{traceback.format_exc()}"
+                )
     finally:
         websocket_clients.remove(websocket)
 
